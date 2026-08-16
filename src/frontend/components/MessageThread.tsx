@@ -1,6 +1,7 @@
 import type { ClientMessage } from '../api/client';
 import { Flashcards } from './Flashcards';
 import { PracticeTest } from './PracticeTest';
+import { Graph } from './Graph';
 
 export function MessageThread({
   messages,
@@ -23,6 +24,7 @@ export function MessageThread({
             {m.content.type === 'practice_test' && conversationId && (
               <PracticeTest conversationId={conversationId} messageId={m.id} questions={m.content.questions} />
             )}
+            {m.content.type === 'graph' && <Graph content={m.content} />}
           </div>
         </div>
       ))}
