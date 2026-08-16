@@ -13,7 +13,7 @@ migrations_dir = "migrations"
 # Must be set to the real deployed Worker URL before production use — magic-link
 # emails are built from this value, so leaving it unset points sign-in links at
 # localhost and nobody can sign in.
-SITE_URL = "REPLACE_WITH_YOUR_DEPLOYED_WORKER_URL"
+SITE_URL = "https://ncc-bot.aroper.workers.dev"
 EMAIL_FROM = "NCC Bot <login@alexroper.dev>"
 
 [assets]
