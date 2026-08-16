@@ -149,21 +149,29 @@ describe('POST /api/chat', () => {
     // on every call — under vitest-pool-workers, sharing a single Response instance across
     // multiple SELF.fetch-triggered requests throws "Cannot perform I/O on behalf of a
     // different request" when the body is read in a later request's handler.
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
       Promise.resolve(
         new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }), { status: 200 })
       )
     );
 
-    let lastStatus = 0;
+    const statuses: number[] = [];
     for (let i = 0; i < 16; i++) {
       const res = await SELF.fetch('http://example.com/api/chat', {
         method: 'POST',
         body: JSON.stringify({ message: `msg ${i}` }),
         headers: { ...headers, 'Content-Type': 'application/json' },
       });
-      lastStatus = res.status;
+      statuses.push(res.status);
     }
-    expect(lastStatus).toBe(429);
+
+    // The 15th request (index 14) is the last one under CHAT_MAX_PER_WINDOW and must
+    // still succeed — a regression that 429s unconditionally from request 1 would fail here.
+    expect(statuses[14]).toBe(200);
+    // Only the 16th (index 15) request should be denied.
+    expect(statuses[15]).toBe(429);
+
+    // Gemini must never be called for the denied request — capped at the limit, not 16.
+    expect(fetchSpy).toHaveBeenCalledTimes(15);
   });
 });

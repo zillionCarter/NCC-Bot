@@ -158,25 +158,32 @@ export async function checkAndIncrementRateLimit(
   windowMs: number,
   maxRequests: number
 ): Promise<boolean> {
-  const row = await env.DB.prepare('SELECT window_start, count FROM rate_limits WHERE user_id = ?')
-    .bind(userId)
-    .first<{ window_start: string; count: number }>();
-
   const now = Date.now();
-  const windowExpired = !row || now - new Date(row.window_start).getTime() > windowMs;
+  const nowStr = new Date(now).toISOString();
+  const cutoffStr = new Date(now - windowMs).toISOString();
 
-  if (windowExpired) {
-    await env.DB.prepare(
-      `INSERT INTO rate_limits (user_id, window_start, count) VALUES (?, ?, 1)
-       ON CONFLICT(user_id) DO UPDATE SET window_start = excluded.window_start, count = 1`
-    )
-      .bind(userId, nowIso())
-      .run();
-    return true;
-  }
+  // Atomically increment only if the window is still valid and under the limit.
+  // The allow/deny decision is embedded in the WHERE clause of the write itself,
+  // so concurrent requests can't both pass a separate read-then-decide check.
+  const incResult = await env.DB.prepare(
+    'UPDATE rate_limits SET count = count + 1 WHERE user_id = ? AND window_start > ? AND count < ?'
+  )
+    .bind(userId, cutoffStr, maxRequests)
+    .run();
+  if (incResult.meta.changes > 0) return true;
 
-  if (row.count >= maxRequests) return false;
+  // No row existed, or the window had expired — atomically create/reset it.
+  // The WHERE guard ensures we only reset a row that's genuinely expired;
+  // if it's not (another request already reset it, or count is at max within
+  // a valid window), this is a no-op and we fall through to deny.
+  const resetResult = await env.DB.prepare(
+    `INSERT INTO rate_limits (user_id, window_start, count) VALUES (?, ?, 1)
+     ON CONFLICT(user_id) DO UPDATE SET window_start = excluded.window_start, count = 1
+     WHERE rate_limits.window_start <= ?`
+  )
+    .bind(userId, nowStr, cutoffStr)
+    .run();
+  if (resetResult.meta.changes > 0) return true;
 
-  await env.DB.prepare('UPDATE rate_limits SET count = count + 1 WHERE user_id = ?').bind(userId).run();
-  return true;
+  return false;
 }
