@@ -49,13 +49,17 @@ export async function createMagicLink(env: Env, token: string, email: string, ex
 }
 
 export async function consumeMagicLink(env: Env, token: string): Promise<{ email: string } | null> {
-  const row = await env.DB.prepare('SELECT email, expires_at, used_at FROM magic_links WHERE token = ?')
+  const nowStr = nowIso();
+  const result = await env.DB.prepare(
+    'UPDATE magic_links SET used_at = ? WHERE token = ? AND used_at IS NULL AND expires_at > ?'
+  )
+    .bind(nowStr, token, nowStr)
+    .run();
+  if (result.meta.changes === 0) return null;
+  const row = await env.DB.prepare('SELECT email FROM magic_links WHERE token = ?')
     .bind(token)
-    .first<{ email: string; expires_at: string; used_at: string | null }>();
-  if (!row || row.used_at) return null;
-  if (new Date(row.expires_at).getTime() < Date.now()) return null;
-  await env.DB.prepare('UPDATE magic_links SET used_at = ? WHERE token = ?').bind(nowIso(), token).run();
-  return { email: row.email };
+    .first<{ email: string }>();
+  return row ? { email: row.email } : null;
 }
 
 export async function createSession(env: Env, token: string, userId: string, expiresAt: string): Promise<void> {
