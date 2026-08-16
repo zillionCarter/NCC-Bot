@@ -32,6 +32,7 @@ export async function maybeSummarize(
     []
   );
 
-  await db.setMemorySummary(env, userId, result.text ?? existingSummary);
+  const newSummary = result.text?.trim() ? result.text : existingSummary;
+  await db.setMemorySummary(env, userId, newSummary);
   await db.deleteMessages(env, oldest.map((m) => m.id));
 }
