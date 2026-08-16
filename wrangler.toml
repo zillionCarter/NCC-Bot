@@ -10,5 +10,8 @@ database_id = "REPLACE_AFTER_RUNNING_WRANGLER_D1_CREATE"
 migrations_dir = "migrations"
 
 [vars]
-SITE_URL = "http://localhost:8787"
+# Must be set to the real deployed Worker URL before production use — magic-link
+# emails are built from this value, so leaving it unset points sign-in links at
+# localhost and nobody can sign in.
+SITE_URL = "REPLACE_WITH_YOUR_DEPLOYED_WORKER_URL"
 EMAIL_FROM = "NCC Bot <login@REPLACE_WITH_YOUR_VERIFIED_RESEND_DOMAIN>"
