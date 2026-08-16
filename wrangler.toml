@@ -15,6 +15,10 @@ migrations_dir = "migrations"
 # localhost and nobody can sign in.
 SITE_URL = "https://ncc-bot.aroper.workers.dev"
 EMAIL_FROM = "NCC Bot <login@alexroper.dev>"
+# TEMPORARY, for testing: accepts sign-ins from any email domain, not just
+# .edu.au. Remove this line before real launch — it defeats the signup
+# restriction described in the design spec.
+ALLOW_ANY_EMAIL_DOMAIN = "true"
 
 [assets]
 directory = "./dist"
