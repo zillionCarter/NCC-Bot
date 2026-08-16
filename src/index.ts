@@ -19,4 +19,11 @@ app.route('/api/onboarding', onboardingRoutes);
 app.route('/api/me', meRoutes);
 app.route('/api/conversations', conversationsRoutes);
 
+app.get('*', async (c) => {
+  const assetResponse = await c.env.ASSETS.fetch(c.req.raw);
+  if (assetResponse.status !== 404) return assetResponse;
+  const indexUrl = new URL('/index.html', c.req.url);
+  return c.env.ASSETS.fetch(new Request(indexUrl, c.req.raw));
+});
+
 export default app;

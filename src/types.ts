@@ -2,6 +2,7 @@ export type Role = 'student' | 'teacher' | 'admin';
 
 export interface Env {
   DB: D1Database;
+  ASSETS: Fetcher;
   GEMINI_API_KEY: string;
   RESEND_API_KEY: string;
   ADMIN_EMAIL: string;

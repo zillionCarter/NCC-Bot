@@ -7,7 +7,9 @@ export default defineConfig({
   test: {
     pool: 'cloudflare',
     setupFiles: ['test/setup.ts'],
+    include: ['test/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/.worktrees/**'],
+    projects: ['./vitest.config.ts', './vitest.frontend.config.ts'],
   },
   plugins: [
     cloudflareTest({
