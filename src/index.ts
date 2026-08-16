@@ -3,6 +3,7 @@ import type { Env, User } from './types';
 import { authRoutes } from './auth/routes';
 import { chatRoutes } from './chat/routes';
 import { adminRoutes } from './admin/routes';
+import { onboardingRoutes } from './onboarding/routes';
 
 export type AppEnv = { Bindings: Env; Variables: { user: User } };
 
@@ -12,5 +13,6 @@ app.get('/health', (c) => c.json({ ok: true }));
 app.route('/auth', authRoutes);
 app.route('/api/chat', chatRoutes);
 app.route('/api/admin', adminRoutes);
+app.route('/api/onboarding', onboardingRoutes);
 
 export default app;
