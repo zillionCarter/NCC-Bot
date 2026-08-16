@@ -61,6 +61,19 @@ describe('admin routes', () => {
     expect(res.status).toBe(403);
   });
 
+  it('an admin cannot demote their own role', async () => {
+    const admin = await loginAs('admin-u8', 'r@school.edu.au', 'admin');
+    const res = await SELF.fetch('http://example.com/api/admin/users/admin-u8/role', {
+      method: 'POST',
+      headers: { ...admin, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'student' }),
+    });
+    expect(res.status).toBe(400);
+
+    const unchanged = await db.getUserById(testEnv, 'admin-u8');
+    expect(unchanged?.role).toBe('admin');
+  });
+
   it('unauthenticated request gets 401', async () => {
     const res = await SELF.fetch('http://example.com/api/admin/users', {
       headers: { 'Content-Type': 'application/json' },

@@ -36,7 +36,9 @@ authRoutes.get('/verify', async (c) => {
 
   let user = await db.getUserByEmail(c.env, result.email);
   if (!user) {
-    const role = result.email === c.env.ADMIN_EMAIL ? 'admin' : 'student';
+    // result.email is already lowercased by /auth/request; normalize ADMIN_EMAIL
+    // the same way so a secret set with any uppercase characters still matches.
+    const role = result.email === c.env.ADMIN_EMAIL.trim().toLowerCase() ? 'admin' : 'student';
     user = await db.createUser(c.env, crypto.randomUUID(), result.email, role);
   }
 

@@ -78,4 +78,56 @@ describe('GET /auth/verify', () => {
     const user = await db.getUserByEmail(env, env.ADMIN_EMAIL);
     expect(user?.role).toBe('admin');
   });
+
+  it('sets a session cookie with HttpOnly, Secure, and SameSite=Lax flags', async () => {
+    const future = new Date(Date.now() + 60_000).toISOString();
+    await db.createMagicLink(env, 'cookie-token', 'cookieflags@newman.edu.au', future);
+
+    const res = await SELF.fetch('http://example.com/auth/verify?token=cookie-token', { redirect: 'manual' });
+    const setCookie = res.headers.get('set-cookie') ?? '';
+    expect(setCookie).toMatch(/session=/);
+    expect(setCookie).toMatch(/httponly/i);
+    expect(setCookie).toMatch(/secure/i);
+    expect(setCookie).toMatch(/samesite=lax/i);
+  });
+
+  it('promotes ADMIN_EMAIL to admin even when the secret has uppercase characters, going through the real lowercasing request -> verify flow', async () => {
+    // /auth/request lowercases the submitted email before storing it; /auth/verify's
+    // admin-bootstrap check must normalize ADMIN_EMAIL the same way, or an
+    // ADMIN_EMAIL secret set with any uppercase characters would silently create
+    // the admin account as a regular student with no in-app way to recover.
+    const originalAdminEmail = env.ADMIN_EMAIL;
+    const mixedCaseEmail = 'Mixed.Case.Admin@Newman.EDU.AU';
+    (env as { ADMIN_EMAIL: string }).ADMIN_EMAIL = mixedCaseEmail;
+    try {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+      const requestRes = await SELF.fetch('http://example.com/auth/request', {
+        method: 'POST',
+        body: JSON.stringify({ email: mixedCaseEmail }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      expect(requestRes.status).toBe(200);
+
+      const lowercased = mixedCaseEmail.toLowerCase();
+      const stored = await db.getUserByEmail(env, lowercased);
+      expect(stored).toBeNull();
+
+      // Find the magic-link token /auth/request just created for this (now lowercased) email.
+      const magicLink = await env.DB.prepare('SELECT token FROM magic_links WHERE email = ? ORDER BY expires_at DESC')
+        .bind(lowercased)
+        .first<{ token: string }>();
+      expect(magicLink).toBeTruthy();
+
+      const verifyRes = await SELF.fetch(
+        `http://example.com/auth/verify?token=${magicLink!.token}`,
+        { redirect: 'manual' }
+      );
+      expect(verifyRes.status).toBe(302);
+
+      const user = await db.getUserByEmail(env, lowercased);
+      expect(user?.role).toBe('admin');
+    } finally {
+      (env as { ADMIN_EMAIL: string }).ADMIN_EMAIL = originalAdminEmail;
+    }
+  });
 });

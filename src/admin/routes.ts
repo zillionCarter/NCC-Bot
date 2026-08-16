@@ -20,6 +20,13 @@ adminRoutes.post('/users/:id/role', requireAuth, requireRole('admin'), async (c)
   if (!role || !VALID_ROLES.includes(role as Role)) {
     return c.json({ error: 'invalid role' }, 400);
   }
+  const actingUser = c.get('user');
+  if (id === actingUser.id && role !== 'admin') {
+    // Admin bootstrap only ever fires on first user creation (see auth/routes.ts),
+    // so a lone admin demoting themselves would permanently lock the deployment
+    // out of role management with no in-app recovery path.
+    return c.json({ error: 'cannot remove your own admin role' }, 400);
+  }
   const target = await db.getUserById(c.env, id);
   if (!target) return c.json({ error: 'user not found' }, 404);
   await db.setUserRole(c.env, id, role as Role);
