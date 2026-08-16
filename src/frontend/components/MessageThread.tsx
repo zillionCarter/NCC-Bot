@@ -1,5 +1,6 @@
 import type { ClientMessage } from '../api/client';
 import { Flashcards } from './Flashcards';
+import { PracticeTest } from './PracticeTest';
 
 export function MessageThread({
   messages,
@@ -19,6 +20,9 @@ export function MessageThread({
           >
             {m.content.type === 'text' && <p className="whitespace-pre-wrap">{m.content.text}</p>}
             {m.content.type === 'flashcards' && <Flashcards cards={m.content.cards} />}
+            {m.content.type === 'practice_test' && conversationId && (
+              <PracticeTest conversationId={conversationId} messageId={m.id} questions={m.content.questions} />
+            )}
           </div>
         </div>
       ))}
