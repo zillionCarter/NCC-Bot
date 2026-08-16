@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { logout } from '../api/client';
+import logo from '../assets/logo.png';
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user, refresh } = useAuth();
@@ -15,8 +16,8 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen flex-col bg-canvas text-ink">
       <header className="flex items-center justify-between border-b border-line bg-surface px-4 py-2">
-        <Link to="/" className="font-heading text-lg font-semibold text-primary">
-          NCC Bot
+        <Link to="/" className="flex items-center gap-2">
+          <img src={logo} alt="NCC Bot" className="h-8 w-auto" />
         </Link>
         <div className="flex items-center gap-3">
           {user?.role === 'admin' && (

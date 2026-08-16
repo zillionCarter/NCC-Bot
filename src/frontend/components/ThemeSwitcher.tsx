@@ -3,7 +3,6 @@ import { useTheme, type Theme } from '../context/ThemeContext';
 const THEME_LABELS: Record<Theme, string> = {
   light: 'Light',
   dark: 'Dark',
-  ncc: 'NCC',
 };
 
 export function ThemeSwitcher() {

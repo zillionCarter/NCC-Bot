@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ncc-bot-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler", "dev", "--var", "ALLOW_ANY_EMAIL_DOMAIN:true"],
+      "port": 8787
+    }
+  ]
+}

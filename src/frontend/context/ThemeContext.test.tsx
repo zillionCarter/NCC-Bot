@@ -8,7 +8,7 @@ function ThemeProbe() {
     <div>
       <span data-testid="current-theme">{theme}</span>
       <button onClick={() => setTheme('dark')}>dark</button>
-      <button onClick={() => setTheme('ncc')}>ncc</button>
+      <button onClick={() => setTheme('light')}>light</button>
     </div>
   );
 }
@@ -45,13 +45,13 @@ describe('ThemeProvider', () => {
   });
 
   it('reads the persisted theme back on a fresh mount', () => {
-    localStorage.setItem('ncc-bot-theme', 'ncc');
+    localStorage.setItem('ncc-bot-theme', 'dark');
     render(
       <ThemeProvider>
         <ThemeProbe />
       </ThemeProvider>
     );
-    expect(screen.getByTestId('current-theme').textContent).toBe('ncc');
-    expect(document.documentElement.getAttribute('data-theme')).toBe('ncc');
+    expect(screen.getByTestId('current-theme').textContent).toBe('dark');
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
   });
 });

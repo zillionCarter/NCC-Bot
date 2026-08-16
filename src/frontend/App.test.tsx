@@ -27,7 +27,7 @@ describe('App', () => {
       </MemoryRouter>
     );
     await waitFor(() => expect(screen.getByPlaceholderText(/ask ncc bot/i)).toBeInTheDocument());
-    expect(screen.getByText('NCC Bot')).toBeInTheDocument();
+    expect(screen.getByAltText('NCC Bot')).toBeInTheDocument();
     expect(screen.getByLabelText('Theme')).toBeInTheDocument();
   });
 });

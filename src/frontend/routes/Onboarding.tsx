@@ -67,9 +67,7 @@ export function Onboarding() {
 
         {(step === 'gradeOrSubject' || step === 'submitting') && (
           <>
-            <div className="rounded rounded-bl-none bg-surface p-4">
-              And what grade are you in? (Teachers/admins: what subject do you teach?)
-            </div>
+            <div className="rounded rounded-bl-none bg-surface p-4">And what grade are you in?</div>
             <form
               onSubmit={(e: FormEvent) => {
                 e.preventDefault();

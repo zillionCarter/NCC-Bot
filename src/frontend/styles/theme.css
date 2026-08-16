@@ -24,18 +24,6 @@
   --color-accent: #feb913;
 }
 
-:root[data-theme='ncc'] {
-  --color-canvas: #ffffff;
-  --color-surface: #fbeceb;
-  --color-ink: #434342;
-  --color-ink-muted: #726f6e;
-  --color-line: #e7d3d3;
-  --color-primary: #da2032;
-  --color-primary-ink: #ffffff;
-  --color-accent: #feb913;
-  --font-heading: 'Montserrat', system-ui, sans-serif;
-}
-
 body {
   background-color: var(--color-canvas);
   color: var(--color-ink);

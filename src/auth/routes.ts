@@ -13,7 +13,11 @@ authRoutes.post('/request', async (c) => {
   const body = (await c.req.json<{ email?: string }>().catch(() => ({}))) as { email?: string };
   const rawEmail = body && typeof body.email === 'string' ? body.email : null;
   const email = rawEmail?.trim().toLowerCase();
-  if (!email || !isEduAuEmail(email)) {
+  // TEMPORARY, dev-only testing bypass: set ALLOW_ANY_EMAIL_DOMAIN=true in .dev.vars
+  // (gitignored, local-only — never set in wrangler.toml [vars] or production secrets)
+  // to sign in with any email domain. Remove this bypass before real launch.
+  const bypassDomainCheck = c.env.ALLOW_ANY_EMAIL_DOMAIN === 'true';
+  if (!email || (!bypassDomainCheck && !isEduAuEmail(email))) {
     return c.json({ error: 'Only .edu.au email addresses can sign in.' }, 400);
   }
 

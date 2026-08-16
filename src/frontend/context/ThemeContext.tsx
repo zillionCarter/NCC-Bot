@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
-export type Theme = 'light' | 'dark' | 'ncc';
+export type Theme = 'light' | 'dark';
 
 const THEME_STORAGE_KEY = 'ncc-bot-theme';
-const THEMES: Theme[] = ['light', 'dark', 'ncc'];
+const THEMES: Theme[] = ['light', 'dark'];
 
 function isTheme(value: string | null): value is Theme {
   return value !== null && (THEMES as string[]).includes(value);

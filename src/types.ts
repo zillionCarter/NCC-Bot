@@ -8,6 +8,7 @@ export interface Env {
   ADMIN_EMAIL: string;
   EMAIL_FROM: string;
   SITE_URL: string;
+  ALLOW_ANY_EMAIL_DOMAIN?: string;
 }
 
 export interface User {
