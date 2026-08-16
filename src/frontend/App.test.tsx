@@ -14,7 +14,7 @@ describe('App', () => {
         <App />
       </MemoryRouter>
     );
-    await waitFor(() => expect(screen.getByText('login screen')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('heading', { name: /sign in to ncc bot/i })).toBeInTheDocument());
   });
 
   it('shows the chat screen inside the layout when logged in and onboarded', async () => {
