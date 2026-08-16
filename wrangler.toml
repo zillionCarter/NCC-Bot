@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "ncc-bot-db"
-database_id = "REPLACE_AFTER_RUNNING_WRANGLER_D1_CREATE"
+database_id = "32fde125-3bb8-4e11-8df8-d3a8bc80cba2"
 migrations_dir = "migrations"
 
 [vars]
@@ -14,7 +14,7 @@ migrations_dir = "migrations"
 # emails are built from this value, so leaving it unset points sign-in links at
 # localhost and nobody can sign in.
 SITE_URL = "REPLACE_WITH_YOUR_DEPLOYED_WORKER_URL"
-EMAIL_FROM = "NCC Bot <login@REPLACE_WITH_YOUR_VERIFIED_RESEND_DOMAIN>"
+EMAIL_FROM = "NCC Bot <login@alexroper.dev>"
 
 [assets]
 directory = "./dist"
