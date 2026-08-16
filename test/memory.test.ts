@@ -1,10 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
 import { env } from 'cloudflare:test';
-import type { Env } from '../src/types';
+import type { Env, ModelContent } from '../src/types';
 import * as db from '../src/db';
 import { maybeSummarize, RECENT_MESSAGE_LIMIT } from '../src/memory';
 
 const testEnv = env as unknown as Env;
+
+// Model-role rows always store JSON-stringified ModelContent in the real app
+// (see chat/routes.ts's db.addMessage call) — mirror that here so maybeSummarize's
+// JSON.parse of model rows doesn't choke on plain test strings.
+function contentFor(role: 'user' | 'model', text: string): string {
+  return role === 'model' ? JSON.stringify({ type: 'text', text } satisfies ModelContent) : text;
+}
 
 describe('maybeSummarize', () => {
   it('does nothing when under the limit', async () => {
@@ -21,7 +28,8 @@ describe('maybeSummarize', () => {
     await db.createUser(testEnv, 'mem-u2', 'f@school.edu.au', 'student');
     await db.createConversation(testEnv, 'mem-c2', 'mem-u2', 'convo');
     for (let i = 0; i < RECENT_MESSAGE_LIMIT + 3; i++) {
-      await db.addMessage(testEnv, `m-${i}`, 'mem-c2', i % 2 === 0 ? 'user' : 'model', `msg ${i}`);
+      const role = i % 2 === 0 ? 'user' : 'model';
+      await db.addMessage(testEnv, `m-${i}`, 'mem-c2', role, contentFor(role, `msg ${i}`));
     }
 
     const callGeminiImpl = vi.fn().mockResolvedValue({ text: 'Updated summary.', functionCall: null });
@@ -56,7 +64,8 @@ describe('maybeSummarize', () => {
 
     // Create overflow messages
     for (let i = 0; i < RECENT_MESSAGE_LIMIT + 2; i++) {
-      await db.addMessage(testEnv, `m3-${i}`, 'mem-c3', i % 2 === 0 ? 'user' : 'model', `msg ${i}`);
+      const role = i % 2 === 0 ? 'user' : 'model';
+      await db.addMessage(testEnv, `m3-${i}`, 'mem-c3', role, contentFor(role, `msg ${i}`));
     }
 
     // Mock Gemini to return empty string (e.g., safety-filtered response)
@@ -79,7 +88,8 @@ describe('maybeSummarize', () => {
 
     // Create overflow messages
     for (let i = 0; i < RECENT_MESSAGE_LIMIT + 1; i++) {
-      await db.addMessage(testEnv, `m4-${i}`, 'mem-c4', i % 2 === 0 ? 'user' : 'model', `msg ${i}`);
+      const role = i % 2 === 0 ? 'user' : 'model';
+      await db.addMessage(testEnv, `m4-${i}`, 'mem-c4', role, contentFor(role, `msg ${i}`));
     }
 
     // Mock Gemini to return whitespace-only string
@@ -90,5 +100,41 @@ describe('maybeSummarize', () => {
     const newSummary = await db.getMemorySummary(testEnv, 'mem-u4');
     expect(newSummary).toBe(existingSummary);
     expect(await db.countMessages(testEnv, 'mem-c4')).toBe(RECENT_MESSAGE_LIMIT);
+  });
+
+  it('redacts practice-test answers from the transcript sent to Gemini for folding', async () => {
+    await db.createUser(testEnv, 'mem-u5', 'i@school.edu.au', 'student');
+    await db.createConversation(testEnv, 'mem-c5', 'mem-u5', 'convo');
+
+    // Seed enough messages to trigger overflow, where the oldest (about-to-be-folded)
+    // message is a model row containing a practice test with a real correct_answer.
+    const practiceTestContent: ModelContent = {
+      type: 'practice_test',
+      questions: [
+        {
+          prompt: 'What is the capital of France?',
+          choices: ['Paris', 'London'],
+          correct_answer: 'Paris',
+          explanation: 'Paris is the capital of France.',
+        },
+      ],
+    };
+    await db.addMessage(testEnv, 'm5-0', 'mem-c5', 'model', JSON.stringify(practiceTestContent));
+    for (let i = 1; i < RECENT_MESSAGE_LIMIT + 2; i++) {
+      const role = i % 2 === 0 ? 'user' : 'model';
+      await db.addMessage(testEnv, `m5-${i}`, 'mem-c5', role, contentFor(role, `msg ${i}`));
+    }
+
+    const callGeminiImpl = vi.fn().mockResolvedValue({ text: 'Updated summary.', functionCall: null });
+    await maybeSummarize(testEnv, 'mem-u5', 'mem-c5', callGeminiImpl);
+
+    expect(callGeminiImpl).toHaveBeenCalledOnce();
+    const prompt = callGeminiImpl.mock.calls[0][2][0].text as string;
+
+    // The raw correct_answer/explanation must never appear verbatim in the prompt sent to Gemini.
+    expect(prompt).not.toContain(practiceTestContent.questions[0].correct_answer);
+    expect(prompt).not.toContain(practiceTestContent.questions[0].explanation);
+    // But the redacted, human-readable trace (what modelContentToText produces) must be present.
+    expect(prompt).toContain('[Generated a 1-question practice test]');
   });
 });

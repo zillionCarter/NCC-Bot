@@ -1,6 +1,7 @@
-import type { Env, Message } from './types';
+import type { Env, Message, ModelContent } from './types';
 import * as db from './db';
 import { callGemini } from './gemini/client';
+import { modelContentToText } from './gemini/tools';
 
 export const RECENT_MESSAGE_LIMIT = 20;
 
@@ -22,7 +23,16 @@ export async function maybeSummarize(
   if (oldest.length === 0) return;
 
   const existingSummary = await db.getMemorySummary(env, userId);
-  const transcript = oldest.map((m) => `${m.role}: ${m.content}`).join('\n');
+  // Model rows store the raw JSON-stringified ModelContent, which for practice
+  // tests includes correct_answer/explanation. Route them through
+  // modelContentToText (same as chat/routes.ts does for Gemini history) so the
+  // summarization prompt never sees the raw answers.
+  const transcript = oldest
+    .map(
+      (m) =>
+        `${m.role}: ${m.role === 'model' ? modelContentToText(JSON.parse(m.content) as ModelContent) : m.content}`
+    )
+    .join('\n');
   const prompt = `Existing summary of this student:\n${existingSummary || '(none yet)'}\n\nNew conversation excerpt to fold in:\n${transcript}\n\nWrite an updated, concise summary (max 200 words) capturing the student's learning style, recurring struggle areas, and topics covered. Return only the summary text.`;
 
   const result = await callGeminiImpl(
