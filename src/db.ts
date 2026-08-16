@@ -114,6 +114,10 @@ export async function addMessage(
     .run();
 }
 
+export async function getMessageById(env: Env, id: string): Promise<Message | null> {
+  return env.DB.prepare('SELECT * FROM messages WHERE id = ?').bind(id).first<Message>();
+}
+
 export async function getRecentMessages(env: Env, conversationId: string, limit: number): Promise<Message[]> {
   const { results } = await env.DB.prepare(
     'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT ?'

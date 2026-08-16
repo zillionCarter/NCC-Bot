@@ -207,4 +207,26 @@ describe('POST /api/chat', () => {
     // Gemini must never be called for the denied request — capped at the limit, not 16.
     expect(fetchSpy).toHaveBeenCalledTimes(15);
   });
+
+  it('returns the id of the stored model message', async () => {
+    const headers = await loginAs('chat-msgid', 'z@school.edu.au', 'student');
+    // mockImplementation (not mockResolvedValue) so a fresh Response is constructed
+    // inside the request's own I/O context — see the 429 test above for why.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'hi' }] } }] }), { status: 200 })
+      )
+    );
+
+    const res = await SELF.fetch('http://example.com/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'hello' }),
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+
+    const body = await res.json<{ conversationId: string; messageId: string }>();
+    expect(body.messageId).toBeTruthy();
+    const stored = await db.getRecentMessages(env, body.conversationId, 10);
+    expect(stored.some((m) => m.id === body.messageId && m.role === 'model')).toBe(true);
+  });
 });

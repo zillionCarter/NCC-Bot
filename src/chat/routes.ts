@@ -71,7 +71,8 @@ chatRoutes.post('/', requireAuth, async (c) => {
     ? functionCallToContent(result.functionCall)
     : { type: 'text', text: result.text ?? "Sorry, I couldn't generate a response." };
 
-  await db.addMessage(c.env, crypto.randomUUID(), conversationId, 'model', JSON.stringify(modelContent));
+  const modelMessageId = crypto.randomUUID();
+  await db.addMessage(c.env, modelMessageId, conversationId, 'model', JSON.stringify(modelContent));
 
   // Summarization is best-effort background bookkeeping, not part of this
   // turn's contract: the reply above is already generated and persisted, so
@@ -84,5 +85,5 @@ chatRoutes.post('/', requireAuth, async (c) => {
     // successful summarization pass folds it.
   }
 
-  return c.json({ conversationId, message: toClientSafeContent(modelContent) });
+  return c.json({ conversationId, messageId: modelMessageId, message: toClientSafeContent(modelContent) });
 });

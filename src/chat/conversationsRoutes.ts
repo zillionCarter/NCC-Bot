@@ -31,3 +31,33 @@ conversationsRoutes.get('/:id', requireAuth, async (c) => {
   }));
   return c.json({ messages });
 });
+
+conversationsRoutes.post('/:id/messages/:messageId/grade', requireAuth, async (c) => {
+  const user = c.get('user');
+  const conversationId = c.req.param('id')!;
+  const messageId = c.req.param('messageId')!;
+
+  const conversation = await db.getConversation(c.env, conversationId, user.id);
+  if (!conversation) return c.json({ error: 'conversation not found' }, 404);
+
+  const message = await db.getMessageById(c.env, messageId);
+  if (!message || message.conversation_id !== conversationId || message.role !== 'model') {
+    return c.json({ error: 'message not found' }, 404);
+  }
+
+  const content = JSON.parse(message.content) as ModelContent;
+  if (content.type !== 'practice_test') {
+    return c.json({ error: 'message is not a practice test' }, 400);
+  }
+
+  const body = await c.req.json<{ answers?: string[] }>().catch(() => ({}) as { answers?: string[] });
+  const answers = Array.isArray(body.answers) ? body.answers : [];
+
+  const results = content.questions.map((q, i) => ({
+    correct: answers[i] === q.correct_answer,
+    correct_answer: q.correct_answer,
+    explanation: q.explanation,
+  }));
+
+  return c.json({ results });
+});
