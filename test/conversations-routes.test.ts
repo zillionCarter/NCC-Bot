@@ -32,3 +32,39 @@ describe('GET /api/conversations', () => {
     expect(body.conversations.map((c) => c.id)).toEqual(['conv-2', 'conv-1']);
   });
 });
+
+describe('GET /api/conversations/:id', () => {
+  it('404s for a conversation that does not belong to the caller', async () => {
+    await loginAs('hist-owner', 'c@school.edu.au', 'student');
+    await db.createConversation(testEnv, 'hist-conv', 'hist-owner', 'x');
+    const other = await loginAs('hist-other', 'd@school.edu.au', 'student');
+
+    const res = await SELF.fetch('http://example.com/api/conversations/hist-conv', { headers: other });
+    expect(res.status).toBe(404);
+  });
+
+  it('returns full history with practice-test answers redacted', async () => {
+    const headers = await loginAs('hist-u1', 'e@school.edu.au', 'student');
+    await db.createConversation(testEnv, 'hist-conv-2', 'hist-u1', 'x');
+    await db.addMessage(testEnv, 'msg-1', 'hist-conv-2', 'user', 'give me a practice test');
+    await db.addMessage(
+      testEnv,
+      'msg-2',
+      'hist-conv-2',
+      'model',
+      JSON.stringify({
+        type: 'practice_test',
+        questions: [{ prompt: 'What is 2+2?', choices: ['3', '4'], correct_answer: '4', explanation: 'because' }],
+      })
+    );
+
+    const res = await SELF.fetch('http://example.com/api/conversations/hist-conv-2', { headers });
+    expect(res.status).toBe(200);
+    const body = await res.json<{ messages: { id: string; role: string; content: any }[] }>();
+    expect(body.messages).toHaveLength(2);
+    expect(body.messages[0].content).toEqual({ type: 'text', text: 'give me a practice test' });
+    expect(body.messages[1].content.type).toBe('practice_test');
+    expect(body.messages[1].content.questions[0].correct_answer).toBe('');
+    expect(body.messages[1].content.questions[0].explanation).toBe('');
+  });
+});

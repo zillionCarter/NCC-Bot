@@ -123,6 +123,15 @@ export async function getRecentMessages(env: Env, conversationId: string, limit:
   return results.reverse();
 }
 
+export async function getAllMessages(env: Env, conversationId: string): Promise<Message[]> {
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC'
+  )
+    .bind(conversationId)
+    .all<Message>();
+  return results;
+}
+
 export async function countMessages(env: Env, conversationId: string): Promise<number> {
   const row = await env.DB.prepare('SELECT COUNT(*) as c FROM messages WHERE conversation_id = ?')
     .bind(conversationId)
