@@ -6,7 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [[d1_databases]]
 binding = "DB"
 database_name = "ncc-bot-db"
-database_id = "32fde125-3bb8-4e11-8df8-d3a8bc80cba2"
+database_id = "a0189fa9-a42a-4823-bb99-1dcbe27a425d"
 migrations_dir = "migrations"
 
 [vars]
