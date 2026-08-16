@@ -2,3 +2,4 @@
 GEMINI_API_KEY=your-gemini-api-key
 RESEND_API_KEY=your-resend-api-key
 ADMIN_EMAIL=you@yourschool.edu.au
+SITE_URL=http://localhost:8787

@@ -72,7 +72,17 @@ chatRoutes.post('/', requireAuth, async (c) => {
     : { type: 'text', text: result.text ?? "Sorry, I couldn't generate a response." };
 
   await db.addMessage(c.env, crypto.randomUUID(), conversationId, 'model', JSON.stringify(modelContent));
-  await maybeSummarize(c.env, user.id, conversationId);
+
+  // Summarization is best-effort background bookkeeping, not part of this
+  // turn's contract: the reply above is already generated and persisted, so
+  // a Gemini failure or a malformed stored row here must not turn a
+  // successful reply into a 500 for the client.
+  try {
+    await maybeSummarize(c.env, user.id, conversationId);
+  } catch {
+    // swallow — the conversation just keeps its full history until the next
+    // successful summarization pass folds it.
+  }
 
   return c.json({ conversationId, message: toClientSafeContent(modelContent) });
 });
