@@ -27,6 +27,13 @@ export interface Message {
   created_at: string;
 }
 
+export interface Conversation {
+  id: string;
+  user_id: string;
+  title: string | null;
+  created_at: string;
+}
+
 export type ModelContent =
   | { type: 'text'; text: string }
   | { type: 'flashcards'; cards: { front: string; back: string }[] }

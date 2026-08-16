@@ -1,4 +1,4 @@
-import type { Env, User, Role, Message } from './types';
+import type { Env, User, Role, Message, Conversation } from './types';
 
 export function nowIso(): string {
   return new Date().toISOString();
@@ -89,6 +89,15 @@ export async function createConversation(env: Env, id: string, userId: string, t
 
 export async function getConversation(env: Env, id: string, userId: string) {
   return env.DB.prepare('SELECT * FROM conversations WHERE id = ? AND user_id = ?').bind(id, userId).first();
+}
+
+export async function listConversations(env: Env, userId: string): Promise<Conversation[]> {
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM conversations WHERE user_id = ? ORDER BY created_at DESC'
+  )
+    .bind(userId)
+    .all<Conversation>();
+  return results;
 }
 
 export async function addMessage(
