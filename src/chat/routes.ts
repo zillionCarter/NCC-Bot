@@ -27,8 +27,17 @@ function toClientSafeContent(content: ModelContent): ModelContent {
   };
 }
 
+const CHAT_WINDOW_MS = 60 * 1000;
+const CHAT_MAX_PER_WINDOW = 15;
+
 chatRoutes.post('/', requireAuth, async (c) => {
   const user = c.get('user');
+
+  const allowed = await db.checkAndIncrementRateLimit(c.env, user.id, CHAT_WINDOW_MS, CHAT_MAX_PER_WINDOW);
+  if (!allowed) {
+    return c.json({ error: 'Too many messages — please wait a moment and try again.' }, 429);
+  }
+
   const body = await c.req
     .json<{ conversationId?: string; message?: string }>()
     .catch(() => ({}) as { conversationId?: string; message?: string });

@@ -142,4 +142,28 @@ describe('POST /api/chat', () => {
     expect(storedContent.questions[1].correct_answer).toBe('Paris');
     expect(storedContent.questions[1].explanation).toBe('Paris is the capital of France.');
   });
+
+  it('429s once the per-user rate limit is exceeded', async () => {
+    const headers = await loginAs('chat-rl', 's@school.edu.au', 'student');
+    // Use mockImplementation (not mockResolvedValue) so a fresh Response is constructed
+    // on every call — under vitest-pool-workers, sharing a single Response instance across
+    // multiple SELF.fetch-triggered requests throws "Cannot perform I/O on behalf of a
+    // different request" when the body is read in a later request's handler.
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }), { status: 200 })
+      )
+    );
+
+    let lastStatus = 0;
+    for (let i = 0; i < 16; i++) {
+      const res = await SELF.fetch('http://example.com/api/chat', {
+        method: 'POST',
+        body: JSON.stringify({ message: `msg ${i}` }),
+        headers: { ...headers, 'Content-Type': 'application/json' },
+      });
+      lastStatus = res.status;
+    }
+    expect(lastStatus).toBe(429);
+  });
 });

@@ -151,3 +151,32 @@ export async function setMemorySummary(env: Env, userId: string, summary: string
     .bind(userId, summary, nowIso())
     .run();
 }
+
+export async function checkAndIncrementRateLimit(
+  env: Env,
+  userId: string,
+  windowMs: number,
+  maxRequests: number
+): Promise<boolean> {
+  const row = await env.DB.prepare('SELECT window_start, count FROM rate_limits WHERE user_id = ?')
+    .bind(userId)
+    .first<{ window_start: string; count: number }>();
+
+  const now = Date.now();
+  const windowExpired = !row || now - new Date(row.window_start).getTime() > windowMs;
+
+  if (windowExpired) {
+    await env.DB.prepare(
+      `INSERT INTO rate_limits (user_id, window_start, count) VALUES (?, ?, 1)
+       ON CONFLICT(user_id) DO UPDATE SET window_start = excluded.window_start, count = 1`
+    )
+      .bind(userId, nowIso())
+      .run();
+    return true;
+  }
+
+  if (row.count >= maxRequests) return false;
+
+  await env.DB.prepare('UPDATE rate_limits SET count = count + 1 WHERE user_id = ?').bind(userId).run();
+  return true;
+}
