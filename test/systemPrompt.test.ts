@@ -24,4 +24,13 @@ describe('buildSystemPrompt', () => {
     });
     expect(prompt).toMatch(/Struggles with fractions\./);
   });
+
+  it('places the policy text before the profile/name text, so untrusted profile fields can never precede the rules', () => {
+    const prompt = buildSystemPrompt({ role: 'student', name: 'Alex', gradeOrSubject: 'Year 10', memorySummary: '' });
+    const policyIndex = prompt.indexOf('Follow this policy strictly');
+    const profileIndex = prompt.indexOf('Talking to: Alex');
+    expect(policyIndex).toBeGreaterThan(-1);
+    expect(profileIndex).toBeGreaterThan(-1);
+    expect(policyIndex).toBeLessThan(profileIndex);
+  });
 });

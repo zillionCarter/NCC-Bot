@@ -40,9 +40,12 @@ export function buildSystemPrompt(params: {
   const intro = `You are NCC Bot, an AI tutoring assistant for a school. You can be wrong, so encourage critical thinking about your answers.`;
   const displayName = name ?? "someone who hasn't introduced themselves yet";
   const gradeStr = gradeOrSubject ? ` (${gradeOrSubject})` : '';
+  // Untrusted, user-supplied text (name/gradeOrSubject come from the onboarding
+  // endpoint). It must be placed AFTER the policy block below — not before —
+  // so it can never appear to define or override the rules before they're stated.
   const profile = `Talking to: ${displayName}${gradeStr}, role: ${role}.`;
   const memory = memorySummary ? `What you know about this person so far: ${memorySummary}` : '';
   const policy = role === 'student' ? STUDENT_POLICY : STAFF_POLICY;
 
-  return [intro, profile, memory, policy].filter(Boolean).join('\n\n');
+  return [intro, policy, profile, memory].filter(Boolean).join('\n\n');
 }
