@@ -1,6 +1,6 @@
 # NCC Bot — Design Spec
 
-Status: approved pending final user review
+Status: approved
 Author: Claude (with alex@NCC), 2026-08-16
 
 ## 1. Overview
@@ -118,9 +118,9 @@ memory_summaries (
 Triggered client-side when `user.onboarded === false`. Runs as a scripted
 first conversation rather than a form:
 
-- NCC Bot introduces itself, including the ddb-style disclaimer: what it is,
-  that it can be wrong, that conversations are stored so teachers/admins can
-  review them.
+- NCC Bot introduces itself, including the ddb-style disclaimer: what it is
+  and that it can be wrong, so the student should think critically about its
+  answers.
 - Asks preferred name, grade/subject (students) or subject taught
   (teachers/admins).
 - Students additionally get a couple of light questions about how they like
