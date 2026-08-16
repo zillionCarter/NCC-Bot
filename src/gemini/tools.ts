@@ -98,3 +98,21 @@ export function modelContentToText(content: ModelContent): string {
       return `[Generated a ${content.chartType} graph${content.title ? `: ${content.title}` : ''}]`;
   }
 }
+
+// REQUIRED CHOKEPOINT: this is the only thing standing between stored ModelContent
+// (which may contain practice-test correct_answer/explanation fields) and a client
+// response. Any route that might return ModelContent to a client — including any
+// future conversation-history endpoint — must pass it through this function rather
+// than reimplementing the redaction, or it risks leaking practice-test answers.
+export function toClientSafeContent(content: ModelContent): ModelContent {
+  if (content.type !== 'practice_test') return content;
+  return {
+    type: 'practice_test',
+    questions: content.questions.map(({ prompt, choices }) => ({
+      prompt,
+      choices,
+      correct_answer: '',
+      explanation: '',
+    })),
+  };
+}

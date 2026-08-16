@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { functionCallToContent, modelContentToText, TOOL_DECLARATIONS } from '../src/gemini/tools';
+import { functionCallToContent, modelContentToText, toClientSafeContent, TOOL_DECLARATIONS } from '../src/gemini/tools';
 
 describe('TOOL_DECLARATIONS', () => {
   it('declares all three rich-content tools', () => {
@@ -45,5 +45,23 @@ describe('modelContentToText', () => {
       })
     ).toMatch(/1-question practice test/);
     expect(modelContentToText({ type: 'graph', chartType: 'bar', data: [], title: 'Sales' })).toMatch(/graph.*Sales/i);
+  });
+});
+
+describe('toClientSafeContent', () => {
+  it('redacts correct_answer and explanation on practice tests', () => {
+    const safe = toClientSafeContent({
+      type: 'practice_test',
+      questions: [{ prompt: 'p', choices: ['a', 'b'], correct_answer: 'a', explanation: 'because' }],
+    });
+    expect(safe).toEqual({
+      type: 'practice_test',
+      questions: [{ prompt: 'p', choices: ['a', 'b'], correct_answer: '', explanation: '' }],
+    });
+  });
+
+  it('passes non-practice-test content through unchanged', () => {
+    const text = { type: 'text' as const, text: 'hi' };
+    expect(toClientSafeContent(text)).toEqual(text);
   });
 });
