@@ -23,10 +23,20 @@ authRoutes.post('/request', async (c) => {
 
   const token = generateToken();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-  await db.createMagicLink(c.env, token, email, expiresAt);
 
-  const link = `${c.env.SITE_URL}/auth/verify?token=${token}`;
-  await sendMagicLinkEmail(c.env.RESEND_API_KEY, c.env.EMAIL_FROM, email, link);
+  // A D1 write or Resend failure here must not surface as an unhandled
+  // exception (Hono's default handler would return a bare, non-JSON 500 with
+  // no detail) — log the real cause server-side and return a clean JSON
+  // error to the client, matching the pattern already used for the Gemini
+  // call in chat/routes.ts.
+  try {
+    await db.createMagicLink(c.env, token, email, expiresAt);
+    const link = `${c.env.SITE_URL}/auth/verify?token=${token}`;
+    await sendMagicLinkEmail(c.env.RESEND_API_KEY, c.env.EMAIL_FROM, email, link);
+  } catch (err) {
+    console.error('Failed to send magic-link email:', err);
+    return c.json({ error: 'Could not send the sign-in email right now — please try again in a moment.' }, 502);
+  }
 
   return c.json({ ok: true });
 });
