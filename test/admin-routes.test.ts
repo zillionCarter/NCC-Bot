@@ -49,4 +49,22 @@ describe('admin routes', () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it('a student cannot promote users via POST', async () => {
+    const student = await loginAs('admin-u6', 'p@school.edu.au', 'student');
+    await loginAs('admin-u7', 'q@school.edu.au', 'student');
+    const res = await SELF.fetch('http://example.com/api/admin/users/admin-u7/role', {
+      method: 'POST',
+      headers: { ...student, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'teacher' }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('unauthenticated request gets 401', async () => {
+    const res = await SELF.fetch('http://example.com/api/admin/users', {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.status).toBe(401);
+  });
 });
