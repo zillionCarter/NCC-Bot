@@ -1,4 +1,5 @@
 import type { ClientMessage } from '../api/client';
+import { Flashcards } from './Flashcards';
 
 export function MessageThread({
   messages,
@@ -17,6 +18,7 @@ export function MessageThread({
             }`}
           >
             {m.content.type === 'text' && <p className="whitespace-pre-wrap">{m.content.text}</p>}
+            {m.content.type === 'flashcards' && <Flashcards cards={m.content.cards} />}
           </div>
         </div>
       ))}
