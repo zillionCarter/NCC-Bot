@@ -1,0 +1,14 @@
+name = "ncc-bot"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ncc-bot-db"
+database_id = "REPLACE_AFTER_RUNNING_WRANGLER_D1_CREATE"
+migrations_dir = "migrations"
+
+[vars]
+SITE_URL = "http://localhost:8787"
+EMAIL_FROM = "NCC Bot <login@REPLACE_WITH_YOUR_VERIFIED_RESEND_DOMAIN>"

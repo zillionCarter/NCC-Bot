@@ -1,0 +1,4 @@
+# .dev.vars.example — copy to .dev.vars and fill in real values. .dev.vars is gitignored.
+GEMINI_API_KEY=your-gemini-api-key
+RESEND_API_KEY=your-resend-api-key
+ADMIN_EMAIL=you@yourschool.edu.au
