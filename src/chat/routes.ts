@@ -5,27 +5,10 @@ import * as db from '../db';
 import { requireAuth } from '../auth/middleware';
 import { callGemini } from '../gemini/client';
 import { buildSystemPrompt } from '../gemini/systemPrompt';
-import { TOOL_DECLARATIONS, functionCallToContent, modelContentToText } from '../gemini/tools';
+import { TOOL_DECLARATIONS, functionCallToContent, modelContentToText, toClientSafeContent } from '../gemini/tools';
 import { getConversationContext, maybeSummarize } from '../memory';
 
 export const chatRoutes = new Hono<AppEnv>();
-
-// Practice-test correct answers/explanations must never reach the client until
-// the student submits their attempt. The full content (with answers) is what
-// gets persisted to D1 via db.addMessage — this redaction only applies to the
-// HTTP response body.
-function toClientSafeContent(content: ModelContent): ModelContent {
-  if (content.type !== 'practice_test') return content;
-  return {
-    type: 'practice_test',
-    questions: content.questions.map(({ prompt, choices }) => ({
-      prompt,
-      choices,
-      correct_answer: '',
-      explanation: '',
-    })),
-  };
-}
 
 const CHAT_WINDOW_MS = 60 * 1000;
 const CHAT_MAX_PER_WINDOW = 15;
@@ -72,7 +55,17 @@ chatRoutes.post('/', requireAuth, async (c) => {
     text: m.role === 'model' ? modelContentToText(JSON.parse(m.content) as ModelContent) : m.content,
   }));
 
-  const result = await callGemini(c.env.GEMINI_API_KEY, systemPrompt, geminiHistory, [...TOOL_DECLARATIONS]);
+  // The user's message and rate-limit quota are already persisted above by the
+  // time we get here, so a Gemini failure must not throw out of the handler —
+  // that would fall through to Hono's default text/plain error handler and
+  // break the JSON contract every other route in this codebase honors, leaving
+  // the conversation with a dangling user turn and no model reply.
+  let result;
+  try {
+    result = await callGemini(c.env.GEMINI_API_KEY, systemPrompt, geminiHistory, [...TOOL_DECLARATIONS]);
+  } catch {
+    return c.json({ error: 'The tutor is unavailable right now — please try again in a moment.' }, 502);
+  }
 
   const modelContent: ModelContent = result.functionCall
     ? functionCallToContent(result.functionCall)

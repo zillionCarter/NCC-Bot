@@ -143,6 +143,39 @@ describe('POST /api/chat', () => {
     expect(storedContent.questions[1].explanation).toBe('Paris is the capital of France.');
   });
 
+  it('returns a 502 JSON error (not a thrown exception) when Gemini fails', async () => {
+    const headers = await loginAs('chat-u6', 'l@school.edu.au', 'student');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(new Response('rate limited', { status: 429 }))
+    );
+
+    const res = await SELF.fetch('http://example.com/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'hello' }),
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+
+    expect(res.status).toBe(502);
+    expect(res.headers.get('content-type')).toMatch(/application\/json/);
+    const body = await res.json<{ error: string }>();
+    expect(body.error).toBeTruthy();
+  });
+
+  it('returns a 502 JSON error when the fetch to Gemini itself rejects', async () => {
+    const headers = await loginAs('chat-u7', 'm2@school.edu.au', 'student');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => Promise.reject(new Error('network down')));
+
+    const res = await SELF.fetch('http://example.com/api/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message: 'hello' }),
+      headers: { ...headers, 'Content-Type': 'application/json' },
+    });
+
+    expect(res.status).toBe(502);
+    const body = await res.json<{ error: string }>();
+    expect(body.error).toBeTruthy();
+  });
+
   it('429s once the per-user rate limit is exceeded', async () => {
     const headers = await loginAs('chat-rl', 's@school.edu.au', 'student');
     // Use mockImplementation (not mockResolvedValue) so a fresh Response is constructed
