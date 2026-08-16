@@ -211,9 +211,9 @@ in this conversation should be rotated in their respective dashboards before
 
 ## 13. Open items to resolve during implementation
 
-- **Model ID**: "gemini 3.5 flash light" doesn't match any model name on
-  record as of this design — will verify the current exact ID against
-  Google's live model list and use the closest real match if needed.
+- **Model ID**: confirmed via live API call — `gemini-3.5-flash-lite` is a
+  real, current model (1,048,576 input token limit, supports
+  `generateContent`). Use this exact ID.
 - Basic per-user rate limiting on `/api/chat` (cheap D1 or KV counter) to
   guard against runaway Gemini spend — small addition, worth doing even
   though it wasn't explicitly requested, given a real API key is involved.
