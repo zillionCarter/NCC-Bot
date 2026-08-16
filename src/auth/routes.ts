@@ -8,7 +8,8 @@ export const authRoutes = new Hono<AppEnv>();
 
 authRoutes.post('/request', async (c) => {
   const body = (await c.req.json<{ email?: string }>().catch(() => ({}))) as { email?: string };
-  const email = body.email?.trim().toLowerCase();
+  const rawEmail = body && typeof body.email === 'string' ? body.email : null;
+  const email = rawEmail?.trim().toLowerCase();
   if (!email || !isEduAuEmail(email)) {
     return c.json({ error: 'Only .edu.au email addresses can sign in.' }, 400);
   }

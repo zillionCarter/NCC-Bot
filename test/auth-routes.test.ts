@@ -25,4 +25,26 @@ describe('POST /auth/request', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
   });
+
+  it('rejects numeric email without calling Resend', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const res = await SELF.fetch('http://example.com/auth/request', {
+      method: 'POST',
+      body: JSON.stringify({ email: 123 }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('rejects null body without calling Resend', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const res = await SELF.fetch('http://example.com/auth/request', {
+      method: 'POST',
+      body: 'null',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(res.status).toBe(400);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
