@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     pool: 'cloudflare',
     setupFiles: ['test/setup.ts'],
+    exclude: ['**/node_modules/**', '**/.worktrees/**'],
   },
   plugins: [
     cloudflareTest({
