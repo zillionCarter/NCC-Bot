@@ -63,8 +63,11 @@ export interface GraphSeries {
   values: number[];
 }
 
-export type ModelContent =
-  | { type: 'text'; text: string }
+/**
+ * The rendered cards. Separated from ModelContent so a composite reply can hold one
+ * without the type becoming recursive.
+ */
+export type ArtifactContent =
   | { type: 'flashcards'; cards: { front: string; back: string }[] }
   | {
       type: 'practice_test';
@@ -134,3 +137,15 @@ export type ModelContent =
       // through to the client and rendered in a sandboxed iframe.
       search_entry_point?: string;
     };
+
+export type ModelContent =
+  | { type: 'text'; text: string }
+  /**
+   * Prose plus a card, in one reply.
+   *
+   * A diagram or a graph on its own does not teach anything — the student needs to be
+   * told what they are looking at. The model already writes this prose alongside its
+   * tool call; both routes used to discard it, which is what made cards arrive bare.
+   */
+  | { type: 'composite'; text: string; artifact: ArtifactContent }
+  | ArtifactContent;

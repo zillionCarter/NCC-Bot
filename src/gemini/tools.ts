@@ -1,4 +1,4 @@
-import type { GraphParam, GraphSeries, ModelContent, SourceItem, WorkedStep } from '../types';
+import type { ArtifactContent, GraphParam, GraphSeries, ModelContent, SourceItem, WorkedStep } from '../types';
 import type { FunctionCall } from './client';
 
 const STRING = { type: 'STRING' } as const;
@@ -78,7 +78,8 @@ export const TOOL_DECLARATIONS = [
         },
         params: {
           type: 'ARRAY',
-          description: 'function mode: adjustable coefficients used in the expressions, rendered as sliders.',
+          description:
+            'function mode: adjustable coefficients used in the expressions, rendered as sliders. Start each one at a value that shows the interesting case, never a degenerate one — a quadratic demo opening at a=0 draws a straight line and teaches nothing.',
           items: {
             type: 'OBJECT',
             properties: { name: STRING, value: NUMBER, min: NUMBER, max: NUMBER, step: NUMBER },
@@ -237,7 +238,7 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
 }
 
-export function functionCallToContent(call: FunctionCall): ModelContent {
+export function functionCallToContent(call: FunctionCall): ArtifactContent {
   const args = call.args ?? {};
   switch (call.name) {
     case 'render_flashcards':
@@ -357,6 +358,10 @@ export function modelContentToText(content: ModelContent): string {
   switch (content.type) {
     case 'text':
       return content.text;
+    case 'composite':
+      // Both halves go into history: the prose is what the model actually said, and
+      // the card summary lets it refer back to what it drew.
+      return `${content.text}\n${modelContentToText(content.artifact)}`;
     case 'flashcards':
       return `[Generated ${content.cards.length} flashcard${content.cards.length === 1 ? '' : 's'}]`;
     case 'practice_test':
@@ -394,6 +399,11 @@ export function modelContentToText(content: ModelContent): string {
 // Note on worked_example: its answer is deliberately NOT redacted. It answers a
 // parallel problem, never the student's own, so showing it in full is the point.
 export function toClientSafeContent(content: ModelContent): ModelContent {
+  // A practice test wrapped in a composite is still a practice test — recursing here
+  // is what stops the answers leaking through the new reply shape.
+  if (content.type === 'composite') {
+    return { ...content, artifact: toClientSafeContent(content.artifact) as ArtifactContent };
+  }
   if (content.type !== 'practice_test') return content;
   return {
     type: 'practice_test',
@@ -406,11 +416,17 @@ export function toClientSafeContent(content: ModelContent): ModelContent {
   };
 }
 
+/** Pairs a card with the prose the model wrote to introduce it. */
+export function compositeContent(text: string, artifact: ArtifactContent): ModelContent {
+  const trimmed = text.trim();
+  return trimmed ? { type: 'composite', text: trimmed, artifact } : artifact;
+}
+
 export function sourcesContent(
   topic: string,
   items: SourceItem[],
   extras: { note?: string; searchQueries?: string[]; searchEntryPoint?: string } = {}
-): ModelContent {
+): ArtifactContent {
   return {
     type: 'sources',
     topic,

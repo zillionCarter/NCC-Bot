@@ -248,6 +248,34 @@ A `VOICE` block gives it a defined personality: warm and direct, Australian spel
 Queensland school vocabulary, occasional first-name use, encouragement that is specific
 or absent, no moralising, no performed AI enthusiasm.
 
+## Cards arrived with no explanation (2026-08-18)
+
+Diagrams, graphs and tables were rendering bare — no prose around them, which teaches
+nothing. Two causes, both self-inflicted:
+
+- The prompt said "the card is the whole reply", so the model was told not to explain.
+- Both routes **discarded** the prose anyway. Gemini emits `text` and `functionCall`
+  parts in the same response (confirmed against the live API), and the streaming route
+  reset `accumulated = ''` on a tool call while the JSON route ignored `result.text`.
+
+The fix costs nothing extra, because the explanation was already being generated and
+thrown away:
+
+- `ArtifactContent` is split out of `ModelContent`, and a new
+  `{ type: 'composite', text, artifact }` carries prose plus a card in one reply
+  without the union becoming recursive.
+- Both routes now build a composite when text and a tool call arrive together, and a
+  bare card when there is no prose.
+- `toClientSafeContent` recurses into a composite — without that, a practice test
+  wrapped in one would have leaked every answer through the new shape.
+- The prompt requires two or three sentences of explanation *before* the tool call, and
+  requires filling any `caption` field, which renders under the card as the takeaway.
+- The streamed prose now stays on screen when the tool event arrives instead of being
+  cleared.
+
+Also nudged the graph tool to start sliders at a representative value: it had been
+opening a quadratic demo at `a = 0`, which draws a straight line.
+
 ## Known limitations
 
 - **Study-plan ticks are per-device**, held in `localStorage`. That sits awkwardly

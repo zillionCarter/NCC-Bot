@@ -1,12 +1,18 @@
 import { Hono } from 'hono';
 import { streamSSE } from 'hono/streaming';
 import type { AppEnv } from '../index';
-import type { Env, ModelContent, User } from '../types';
+import type { ArtifactContent, Env, ModelContent, User } from '../types';
 import * as db from '../db';
 import { requireAuth } from '../auth/middleware';
 import { callGemini, streamGemini, type FunctionCall, type GeminiMessage } from '../gemini/client';
 import { buildSystemPrompt } from '../gemini/systemPrompt';
-import { TOOL_DECLARATIONS, functionCallToContent, modelContentToText, toClientSafeContent } from '../gemini/tools';
+import {
+  TOOL_DECLARATIONS,
+  compositeContent,
+  functionCallToContent,
+  modelContentToText,
+  toClientSafeContent,
+} from '../gemini/tools';
 import { findSources } from '../sources/finder';
 import { buildPolicyContext } from '../school/policies';
 import { getConversationContext, maybeSummarize } from '../memory';
@@ -91,7 +97,7 @@ async function prepareTurn(
  * Most tools render straight from their arguments. `find_sources` is different: it
  * needs a second, search-grounded call before there is anything to show.
  */
-async function resolveToolCall(env: Env, call: FunctionCall): Promise<ModelContent> {
+async function resolveToolCall(env: Env, call: FunctionCall): Promise<ArtifactContent> {
   if (call.name === 'find_sources') {
     const topic = typeof call.args?.topic === 'string' ? call.args.topic : '';
     const context = typeof call.args?.context === 'string' ? call.args.context : undefined;
@@ -144,7 +150,7 @@ chatRoutes.post('/', requireAuth, async (c) => {
   try {
     const result = await callGemini(c.env.GEMINI_API_KEY, systemPrompt, history, [...TOOL_DECLARATIONS]);
     modelContent = result.functionCall
-      ? await resolveToolCall(c.env, result.functionCall)
+      ? compositeContent(result.text ?? '', await resolveToolCall(c.env, result.functionCall))
       : contentFromResult(result.text);
   } catch {
     return c.json({ error: 'NCC Bot is unavailable right now — please try again in a moment.' }, 502);
@@ -187,10 +193,8 @@ chatRoutes.post('/stream', requireAuth, async (c) => {
       )) {
         if (event.kind === 'functionCall') {
           functionCall = event.call;
-          // Any prose streamed before a tool call was preamble to the card that is
-          // about to replace it. Tell the client to clear it so the turn doesn't
-          // end up showing a half-sentence above the artifact.
-          accumulated = '';
+          // The prose streamed so far introduces the card — it is kept and shown
+          // above it. A card on its own explains nothing.
           await stream.writeSSE({ event: 'tool', data: JSON.stringify({ name: event.call.name }) });
         } else {
           accumulated += event.delta;
@@ -208,7 +212,7 @@ chatRoutes.post('/stream', requireAuth, async (c) => {
     let modelContent: ModelContent;
     try {
       modelContent = functionCall
-        ? await resolveToolCall(c.env, functionCall)
+        ? compositeContent(accumulated, await resolveToolCall(c.env, functionCall))
         : contentFromResult(accumulated || null);
     } catch {
       await stream.writeSSE({

@@ -54,6 +54,14 @@ export function ModelBody({
   switch (content.type) {
     case 'text':
       return <Markdown>{content.text}</Markdown>;
+    case 'composite':
+      // The explanation leads, the card follows. A card alone teaches nothing.
+      return (
+        <div className="space-y-3">
+          <Markdown>{content.text}</Markdown>
+          <ModelBody content={content.artifact} messageId={messageId} conversationId={conversationId} />
+        </div>
+      );
     case 'worked_example':
       return <WorkedExample content={content} />;
     case 'interactive_graph':
@@ -192,7 +200,7 @@ export function MessageThread({
                 <div style={{ maxWidth: 'var(--measure)' }}>
                   <ModelBody content={message.content} messageId={message.id} conversationId={conversationId} />
                 </div>
-                {message.content.type === 'text' && (
+                {(message.content.type === 'text' || message.content.type === 'composite') && (
                   <div className="mt-2 h-4">
                     <CopyButton text={message.content.text} />
                   </div>

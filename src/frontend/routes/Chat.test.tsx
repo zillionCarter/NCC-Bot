@@ -80,7 +80,7 @@ describe('Chat', () => {
     );
   });
 
-  it('clears streamed preamble and names the work when a tool takes over', async () => {
+  it('keeps the streamed explanation on screen when a tool takes over', async () => {
     let captured: StreamHandlers | null = null;
     vi.spyOn(api, 'sendMessageStream').mockImplementation((_message, _id, handlers) => {
       captured = handlers;
@@ -97,8 +97,9 @@ describe('Chat', () => {
 
     captured!.onTool!('render_worked_example');
     await waitFor(() => expect(screen.getByText(/parallel problem/i)).toBeInTheDocument());
-    // The half-sentence must not linger above the card that replaced it.
-    expect(screen.queryByText(/Let me show you/)).not.toBeInTheDocument();
+    // The prose introduces the card and must survive — a card on its own explains
+    // nothing, which was the original bug.
+    expect(screen.getByText(/Let me show you/)).toBeInTheDocument();
   });
 
   it('drops the unanswered question and offers a retry when the turn fails', async () => {

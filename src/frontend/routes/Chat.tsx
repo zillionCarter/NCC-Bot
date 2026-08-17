@@ -76,8 +76,8 @@ export function Chat() {
     abortRef.current = sendMessageStream(message, conversationId, {
       onDelta: (delta) => setStreamingText((prev) => prev + delta),
       onTool: (name) => {
-        // Any streamed preamble belongs to the card that is replacing it.
-        setStreamingText('');
+        // The streamed prose introduces the card and stays on screen; only the
+        // "building it" indicator is added alongside.
         setPendingTool(name);
       },
       onDone: ({ conversationId: id, messageId, message: content }) => {

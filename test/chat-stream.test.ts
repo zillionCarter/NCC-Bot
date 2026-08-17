@@ -130,7 +130,7 @@ describe('POST /api/chat/stream', () => {
     expect(res.status).toBe(404);
   });
 
-  it('emits a tool event and discards streamed preamble when the model picks a tool', async () => {
+  it('keeps the streamed explanation and pairs it with the card', async () => {
     const headers = await loginAs('st-u3', 'st3@school.edu.au');
     vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
       Promise.resolve(
@@ -143,14 +143,29 @@ describe('POST /api/chat/stream', () => {
 
     const events = await readEvents(await post(headers, { message: 'diagram the water cycle' }));
     expect(events.tool).toEqual({ name: 'render_diagram' });
-    // The half-sentence must not survive alongside the card that replaced it.
+    // The prose the model wrote introduces the card; discarding it was what made
+    // diagrams arrive with no explanation at all.
     expect(events.done?.message).toEqual({
-      type: 'diagram',
-      kind: 'flowchart',
-      mermaid: 'flowchart TD\nA-->B',
-      title: undefined,
-      caption: undefined,
+      type: 'composite',
+      text: 'Let me draw that',
+      artifact: {
+        type: 'diagram',
+        kind: 'flowchart',
+        mermaid: 'flowchart TD\nA-->B',
+        title: undefined,
+        caption: undefined,
+      },
     });
+  });
+
+  it('returns a bare card when the model offered no prose', async () => {
+    const headers = await loginAs('st-u3b', 'st3b@school.edu.au');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(sse([callFrame('render_diagram', { kind: 'flowchart', mermaid: 'flowchart TD\nA-->B' })]))
+    );
+
+    const events = await readEvents(await post(headers, { message: 'diagram it' }));
+    expect(events.done?.message.type).toBe('diagram');
   });
 
   it('redacts practice-test answers in the done event while storing them in full', async () => {

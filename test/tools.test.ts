@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  compositeContent,
   functionCallToContent,
   modelContentToText,
   toClientSafeContent,
@@ -229,6 +230,67 @@ describe('toClientSafeContent', () => {
   it('passes other content types through unchanged', () => {
     const text = { type: 'text' as const, text: 'hi' };
     expect(toClientSafeContent(text)).toEqual(text);
+  });
+});
+
+describe('compositeContent', () => {
+  const card = { type: 'diagram' as const, kind: 'flowchart', mermaid: 'flowchart TD\nA-->B' };
+
+  it('pairs the prose with the card', () => {
+    expect(compositeContent('Here is how it flows.', card)).toEqual({
+      type: 'composite',
+      text: 'Here is how it flows.',
+      artifact: card,
+    });
+  });
+
+  it('returns the bare card when there is no prose, rather than an empty heading', () => {
+    expect(compositeContent('', card)).toEqual(card);
+    expect(compositeContent('   \n ', card)).toEqual(card);
+  });
+
+  it('trims the prose', () => {
+    const content = compositeContent('  Explanation.  ', card);
+    if (content.type !== 'composite') throw new Error('expected composite');
+    expect(content.text).toBe('Explanation.');
+  });
+});
+
+describe('composite content in the chokepoints', () => {
+  it('redacts a practice test nested inside a composite', () => {
+    // Without recursion here the new reply shape would quietly leak every answer.
+    const safe = toClientSafeContent({
+      type: 'composite',
+      text: 'Try these.',
+      artifact: {
+        type: 'practice_test',
+        questions: [{ prompt: 'p', choices: ['a', 'b'], correct_answer: 'a', explanation: 'because' }],
+      },
+    });
+    if (safe.type !== 'composite') throw new Error('expected composite');
+    if (safe.artifact.type !== 'practice_test') throw new Error('expected practice_test');
+    expect(safe.artifact.questions[0].correct_answer).toBe('');
+    expect(safe.artifact.questions[0].explanation).toBe('');
+    expect(safe.text).toBe('Try these.');
+  });
+
+  it('leaves a composite around a non-practice-test card untouched', () => {
+    const content: ModelContent = {
+      type: 'composite',
+      text: 'Here is the water cycle.',
+      artifact: { type: 'diagram', kind: 'flowchart', mermaid: 'flowchart TD\nA-->B' },
+    };
+    expect(toClientSafeContent(content)).toEqual(content);
+  });
+
+  it('carries both halves into conversation history', () => {
+    const text = modelContentToText({
+      type: 'composite',
+      text: 'Evaporation feeds condensation.',
+      artifact: { type: 'diagram', kind: 'flowchart', mermaid: 'x', title: 'Water cycle' },
+    });
+    expect(text).toMatch(/Evaporation feeds condensation\./);
+    expect(text).toMatch(/flowchart diagram.*Water cycle/i);
   });
 });
 

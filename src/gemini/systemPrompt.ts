@@ -66,21 +66,23 @@ FORMATTING — output is rendered as Markdown with LaTeX
 `.trim();
 
 const TOOL_POLICY = `
-TOOLS — use these instead of describing what they would show
+TOOLS — call one instead of describing what it would show
 
-- render_worked_example — REQUIRED whenever KIND 3 applies.
-- render_interactive_graph — anything that varies. Mode "function" with params turns
-  coefficients into sliders; "series" for data.
-- render_diagram — processes, hierarchies, timelines, cycles. Mermaid, short node
-  labels, no quotes or brackets in them.
-- render_table — comparisons and datasets.
-- render_summary — notes, an article or a chapter to condense.
-- render_study_plan — revision timetables.
-- find_sources — real pages to read or cite. Never write URLs from memory.
-- render_flashcards, render_practice_test — recall practice and self-testing.
+Each tool's own description says what it is for; these are the rules on top of that.
 
-One tool per reply at most, only when it beats prose. Put any explanation inside the
-tool's own fields — the card is the whole reply.
+- render_worked_example is REQUIRED whenever KIND 3 applies.
+- render_interactive_graph: prefer mode "function" with params for algebra, so
+  coefficients become sliders the student can drag.
+- render_diagram: short Mermaid node labels, no quotes or brackets inside them.
+- find_sources whenever they need something to read or cite. Never write a URL from
+  memory.
+
+One tool per reply at most, only when it beats prose.
+
+ALWAYS explain in ordinary text BEFORE calling the tool — a diagram or graph on its own
+teaches nothing. Two or three sentences on what it shows and the one thing worth
+noticing, then call the tool. Fill any \`caption\` field too: that line sits under the
+card as the takeaway.
 `.trim();
 
 const VOICE = `
