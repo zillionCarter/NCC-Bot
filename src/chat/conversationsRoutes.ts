@@ -32,6 +32,30 @@ conversationsRoutes.get('/:id', requireAuth, async (c) => {
   return c.json({ messages });
 });
 
+const TITLE_MAX_LENGTH = 120;
+
+conversationsRoutes.patch('/:id', requireAuth, async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id')!;
+  const body = (await c.req.json<{ title?: string }>().catch(() => ({}))) as { title?: string };
+  const title = body.title?.trim();
+  if (!title) return c.json({ error: 'title is required' }, 400);
+  if (title.length > TITLE_MAX_LENGTH) {
+    return c.json({ error: `title must be ${TITLE_MAX_LENGTH} characters or fewer` }, 400);
+  }
+  const renamed = await db.renameConversation(c.env, id, user.id, title);
+  if (!renamed) return c.json({ error: 'conversation not found' }, 404);
+  return c.json({ ok: true });
+});
+
+conversationsRoutes.delete('/:id', requireAuth, async (c) => {
+  const user = c.get('user');
+  const id = c.req.param('id')!;
+  const deleted = await db.deleteConversation(c.env, id, user.id);
+  if (!deleted) return c.json({ error: 'conversation not found' }, 404);
+  return c.json({ ok: true });
+});
+
 conversationsRoutes.post('/:id/messages/:messageId/grade', requireAuth, async (c) => {
   const user = c.get('user');
   const conversationId = c.req.param('id')!;

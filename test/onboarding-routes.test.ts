@@ -46,7 +46,7 @@ describe('POST /api/onboarding', () => {
     expect(res.status).toBe(400);
   });
 
-  it('400s when gradeOrSubject is missing', async () => {
+  it('onboards with no gradeOrSubject — year level only tunes explanations, so it is skippable', async () => {
     await db.createUser(testEnv, 'onb-u3', 'p3@school.edu.au', 'student');
     const future = new Date(Date.now() + 60_000).toISOString();
     await db.createSession(testEnv, 'sess-onb-3', 'onb-u3', future);
@@ -56,7 +56,12 @@ describe('POST /api/onboarding', () => {
       body: JSON.stringify({ name: 'Alex' }),
       headers: { Cookie: 'session=sess-onb-3', 'Content-Type': 'application/json' },
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+
+    const user = await db.getUserById(testEnv, 'onb-u3');
+    expect(user?.onboarded).toBe(1);
+    expect(user?.name).toBe('Alex');
+    expect(user?.grade_or_subject).toBe('');
   });
 
   it('400s when name is empty', async () => {
@@ -85,7 +90,7 @@ describe('POST /api/onboarding', () => {
     expect(res.status).toBe(400);
   });
 
-  it('400s when gradeOrSubject is whitespace-only', async () => {
+  it('treats a whitespace-only gradeOrSubject as simply absent', async () => {
     await db.createUser(testEnv, 'onb-u6', 'p6@school.edu.au', 'student');
     const future = new Date(Date.now() + 60_000).toISOString();
     await db.createSession(testEnv, 'sess-onb-6', 'onb-u6', future);
@@ -95,7 +100,8 @@ describe('POST /api/onboarding', () => {
       body: JSON.stringify({ name: 'Alex', gradeOrSubject: '   ' }),
       headers: { Cookie: 'session=sess-onb-6', 'Content-Type': 'application/json' },
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    expect((await db.getUserById(testEnv, 'onb-u6'))?.grade_or_subject).toBe('');
   });
 
   it('rejects a 200-character name with 400', async () => {

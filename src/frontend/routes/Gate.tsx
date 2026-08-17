@@ -7,7 +7,15 @@ export function Gate({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   if (loading) {
-    return <div className="flex h-screen items-center justify-center text-ink-muted">Loading…</div>;
+    return (
+      <div className="flex h-dvh items-center justify-center bg-paper">
+        <p className="thinking font-mono text-micro uppercase tracking-[0.1em] text-pencil">
+          loading<span>.</span>
+          <span>.</span>
+          <span>.</span>
+        </p>
+      </div>
+    );
   }
 
   if (!user) {

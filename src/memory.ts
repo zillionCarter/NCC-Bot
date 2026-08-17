@@ -1,9 +1,16 @@
 import type { Env, Message, ModelContent } from './types';
 import * as db from './db';
-import { callGemini } from './gemini/client';
+import { callGemini, SUMMARY_MODEL } from './gemini/client';
 import { modelContentToText } from './gemini/tools';
 
-export const RECENT_MESSAGE_LIMIT = 20;
+/**
+ * How many recent messages ride along as context on each turn.
+ *
+ * Every one of these is re-sent — and re-billed — on every turn, so the window is
+ * kept to what a tutoring conversation actually needs to stay coherent. Anything
+ * older is folded into the memory summary instead, which is far cheaper to carry.
+ */
+export const RECENT_MESSAGE_LIMIT = 12;
 
 export async function getConversationContext(env: Env, conversationId: string): Promise<Message[]> {
   return db.getRecentMessages(env, conversationId, RECENT_MESSAGE_LIMIT);
@@ -39,7 +46,10 @@ export async function maybeSummarize(
     env.GEMINI_API_KEY,
     'You summarize tutoring conversations concisely and factually.',
     [{ role: 'user', text: prompt }],
-    []
+    [],
+    fetch,
+    // Invisible bookkeeping — the cheapest model is the right one here.
+    SUMMARY_MODEL
   );
 
   const newSummary = result.text?.trim() ? result.text : existingSummary;

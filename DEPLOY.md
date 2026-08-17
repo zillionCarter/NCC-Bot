@@ -45,6 +45,10 @@ order, before the first real deploy.
    npm run db:migrate:remote
    ```
 
+   This includes `0003_magic_link_codes.sql`, which adds the typed 6-digit sign-in
+   code. Until it is applied, `POST /auth/verify-code` will fail — the magic link
+   itself keeps working.
+
 6. **Deploy**
 
    ```bash
@@ -55,3 +59,22 @@ order, before the first real deploy.
    the link, and confirm the account comes up with role `admin`
    (`GET /api/admin/users` should list it once you're logged in as admin — see
    `src/admin/routes.ts`).
+
+## Cost notes
+
+Chat runs on `gemini-3.5-flash` and memory summarization on
+`gemini-3.5-flash-lite` (see `src/gemini/client.ts`). Step-by-step working and
+clean formatting are partly model-bound, which is why chat is not on the cheapest
+tier — swapping `CHAT_MODEL` back to flash-lite is a one-line change if cost
+matters more than answer quality.
+
+`find_sources` makes a **second**, search-grounded API call on top of the chat
+turn, and Google Search grounding is billed per search. It only fires when the
+model explicitly asks for sources, so it is bounded by usage rather than by turn
+count.
+
+## Before real launch
+
+`wrangler.toml` still contains `ALLOW_ANY_EMAIL_DOMAIN = "true"`, which lets **any**
+email domain sign in, not just `.edu.au`. Remove that line to re-enable the school
+signup restriction.

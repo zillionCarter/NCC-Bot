@@ -42,10 +42,47 @@ export async function completeOnboarding(
     .run();
 }
 
-export async function createMagicLink(env: Env, token: string, email: string, expiresAt: string): Promise<void> {
-  await env.DB.prepare('INSERT INTO magic_links (token, email, expires_at) VALUES (?, ?, ?)')
-    .bind(token, email, expiresAt)
+export const MAX_CODE_ATTEMPTS = 5;
+
+export async function createMagicLink(
+  env: Env,
+  token: string,
+  email: string,
+  expiresAt: string,
+  code: string | null = null
+): Promise<void> {
+  await env.DB.prepare('INSERT INTO magic_links (token, email, expires_at, code) VALUES (?, ?, ?, ?)')
+    .bind(token, email, expiresAt, code)
     .run();
+}
+
+/**
+ * Redeems a typed sign-in code. Returns the email on success, null otherwise.
+ *
+ * A wrong guess burns an attempt against every live link for that address, so a
+ * guessing loop exhausts the allowance instead of running indefinitely against a
+ * space only 10^6 wide.
+ */
+export async function consumeMagicLinkCode(env: Env, email: string, code: string): Promise<{ email: string } | null> {
+  const nowStr = nowIso();
+  const claimed = await env.DB.prepare(
+    `UPDATE magic_links SET used_at = ?
+     WHERE token = (
+       SELECT token FROM magic_links
+       WHERE email = ? AND code = ? AND used_at IS NULL AND expires_at > ? AND attempts < ?
+       ORDER BY expires_at DESC LIMIT 1
+     )`
+  )
+    .bind(nowStr, email, code, nowStr, MAX_CODE_ATTEMPTS)
+    .run();
+  if (claimed.meta.changes > 0) return { email };
+
+  await env.DB.prepare(
+    'UPDATE magic_links SET attempts = attempts + 1 WHERE email = ? AND used_at IS NULL AND expires_at > ?'
+  )
+    .bind(email, nowStr)
+    .run();
+  return null;
 }
 
 export async function consumeMagicLink(env: Env, token: string): Promise<{ email: string } | null> {
@@ -98,6 +135,30 @@ export async function listConversations(env: Env, userId: string): Promise<Conve
     .bind(userId)
     .all<Conversation>();
   return results;
+}
+
+export async function renameConversation(env: Env, id: string, userId: string, title: string): Promise<boolean> {
+  const result = await env.DB.prepare('UPDATE conversations SET title = ? WHERE id = ? AND user_id = ?')
+    .bind(title, id, userId)
+    .run();
+  return result.meta.changes > 0;
+}
+
+/**
+ * Ownership is confirmed before anything is deleted, so a request naming someone
+ * else's conversation cannot touch its messages.
+ *
+ * Order matters: D1 enforces foreign keys, and messages.conversation_id references
+ * conversations(id) — deleting the parent row first fails the constraint.
+ */
+export async function deleteConversation(env: Env, id: string, userId: string): Promise<boolean> {
+  const owned = await env.DB.prepare('SELECT id FROM conversations WHERE id = ? AND user_id = ?')
+    .bind(id, userId)
+    .first<{ id: string }>();
+  if (!owned) return false;
+  await env.DB.prepare('DELETE FROM messages WHERE conversation_id = ?').bind(id).run();
+  await env.DB.prepare('DELETE FROM conversations WHERE id = ? AND user_id = ?').bind(id, userId).run();
+  return true;
 }
 
 export async function addMessage(

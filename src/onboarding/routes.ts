@@ -18,9 +18,11 @@ onboardingRoutes.post('/', requireAuth, async (c) => {
   const user = c.get('user');
   const body: { name?: string; gradeOrSubject?: string } = await c.req.json().catch(() => ({}));
   const name = body.name?.trim();
-  const gradeOrSubject = body.gradeOrSubject?.trim();
-  if (!name || !gradeOrSubject) {
-    return c.json({ error: 'name and gradeOrSubject are required' }, 400);
+  // Year level is optional: it only tunes how explanations are pitched, so making
+  // it a requirement would block sign-in over something skippable.
+  const gradeOrSubject = body.gradeOrSubject?.trim() ?? '';
+  if (!name) {
+    return c.json({ error: 'name is required' }, 400);
   }
   if (name.length > MAX_FIELD_LENGTH || gradeOrSubject.length > MAX_FIELD_LENGTH) {
     return c.json({ error: `name and gradeOrSubject must be ${MAX_FIELD_LENGTH} characters or fewer` }, 400);

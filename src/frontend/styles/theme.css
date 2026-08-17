@@ -1,31 +1,478 @@
 @import 'tailwindcss';
 
+/* Self-hosted so there is no third-party request on load and no flash of fallback
+   type. Literata carries headings and mathematical prose; Atkinson Hyperlegible
+   was drawn for maximum character disambiguation, which is exactly what a screen
+   full of 1/l/I and 0/O needs; Plex Mono handles code, data and labels. */
+@import '@fontsource-variable/literata/wght.css';
+@import '@fontsource-variable/literata/wght-italic.css';
+@import '@fontsource/atkinson-hyperlegible-next/400.css';
+@import '@fontsource/atkinson-hyperlegible-next/500.css';
+@import '@fontsource/atkinson-hyperlegible-next/600.css';
+@import '@fontsource/atkinson-hyperlegible-next/700.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import 'katex/dist/katex.min.css';
+
+/* One palette, light only. */
 @theme {
-  --color-canvas: #ffffff;
-  --color-surface: #f5f5f5;
-  --color-ink: #1a1a1a;
-  --color-ink-muted: #6b6b6b;
-  --color-line: #e0e0e0;
-  --color-primary: #0057b8;
-  --color-primary-ink: #ffffff;
-  --color-accent: #feb913;
-  --font-heading: system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  /* Paper, not cream. The canvas is a cool-neutral sheet; cards lift to true
+     white above it, the way loose paper sits on a desk. */
+  --color-paper: #fafaf8;
+  --color-raised: #ffffff;
+  --color-sunken: #f2f2ef;
+
+  /* Fountain-pen blue-black rather than #000 — softer to read at length. */
+  --color-ink: #16181d;
+  --color-graphite: #5a6068;
+  --color-pencil: #8a9099;
+  --color-rule: #e4e4e0;
+  --color-rule-strong: #d0d0cb;
+
+  --color-accent: #0b5fb0;
+  --color-accent-soft: #e8f0f9;
+  --color-accent-ink: #ffffff;
+
+  /* The school yellow, demoted to exactly one job: marking the line that matters. */
+  --color-highlighter: #ffd24a;
+
+  --color-correct: #1a7f52;
+  --color-correct-soft: #e7f3ec;
+  --color-wrong: #b3341f;
+  --color-wrong-soft: #fbeae6;
+
+  /* Graph paper is printed in pale blue, so the grid is a tint of the accent. */
+  --color-grid: rgba(11, 95, 176, 0.07);
+
+  --font-display: 'Literata Variable', Georgia, 'Times New Roman', serif;
+  --font-body: 'Atkinson Hyperlegible Next', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Small sizes stay fixed; the display sizes scale with the viewport so a 320px
+     phone and a 1600px desktop both get sensible headings without a breakpoint
+     for every step. */
+  --text-micro: 0.6875rem;
+  --text-tiny: 0.75rem;
+  --text-small: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-body: 1rem;
+  --text-lead: clamp(1.0625rem, 0.25vw + 1rem, 1.1875rem);
+  --text-title: clamp(1.1875rem, 0.6vw + 1.05rem, 1.4375rem);
+  --text-display: clamp(1.5rem, 1.6vw + 1.1rem, 1.9375rem);
+  --text-hero: clamp(1.75rem, 3vw + 1rem, 2.625rem);
+
+  --radius-card: 10px;
+
+  /* One measure for reading prose, used everywhere so answers line up. */
+  --measure: 68ch;
 }
 
-:root[data-theme='dark'] {
-  --color-canvas: #14161a;
-  --color-surface: #1e2126;
-  --color-ink: #f2f2f2;
-  --color-ink-muted: #a0a0a0;
-  --color-line: #2c2f36;
-  --color-primary: #4c9aff;
-  --color-primary-ink: #0b0c0e;
-  --color-accent: #feb913;
+html {
+  color-scheme: light;
 }
 
 body {
-  background-color: var(--color-canvas);
+  background-color: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
+  font-size: var(--text-base);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-highlighter);
+  color: #16181d;
+}
+
+/* One focus treatment for the whole app, visible on every surface. */
+:where(a, button, input, textarea, select, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ── Structural devices ─────────────────────────────────────────────────── */
+
+/* The eyebrow that names an artifact. Mono, tracked out, quiet. */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-pencil);
+}
+
+/* Squared paper, confined to surfaces where working-out happens. */
+.gridded {
+  background-image:
+    linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* A swept highlighter stroke: sits behind the text and stops short of the cap
+   height, the way a real marker does. `box-decoration-break: clone` makes it repeat
+   per line, so a wrapped sentence gets a stroke on every line rather than one band
+   smeared across the whole inline box. */
+.marked {
+  padding: 0.05em 0.15em;
+  background-image: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--color-highlighter) 55%, transparent) 0%,
+    color-mix(in srgb, var(--color-highlighter) 55%, transparent) 48%,
+    transparent 48%
+  );
+  background-repeat: no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Row actions (rename, delete, copy) that appear on hover.
+   Default is visible: on a touch screen hover never happens, so a hover-only
+   control is simply unreachable. The reveal is added back only for devices that
+   actually have a pointer. */
+.hover-reveal {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hover-reveal {
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .group:hover .hover-reveal,
+  .hover-reveal:hover,
+  .hover-reveal:focus-within,
+  .hover-reveal:has(:focus-visible) {
+    opacity: 1;
+  }
+}
+
+/* ── Prose ─────────────────────────────────────────────────────────────── */
+
+/* Applied to every rendered-Markdown surface: chat answers, worked-example
+   explanations, summaries, quiz prompts. Consistency across them is the point. */
+.prose {
+  font-size: var(--text-body);
+  line-height: 1.7;
+}
+
+.prose > * + * {
+  margin-top: 0.85em;
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--color-ink);
+}
+
+.prose h1 {
+  font-size: var(--text-title);
+}
+
+.prose h2 {
+  font-size: var(--text-lead);
+  margin-top: 1.6em;
+}
+
+.prose h3 {
+  font-size: var(--text-body);
+  margin-top: 1.4em;
+}
+
+.prose h2 + *,
+.prose h3 + * {
+  margin-top: 0.5em;
+}
+
+.prose strong {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose a {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.35em;
+}
+
+.prose ul {
+  list-style: disc;
+}
+
+.prose ol {
+  list-style: decimal;
+}
+
+.prose li + li {
+  margin-top: 0.3em;
+}
+
+.prose li::marker {
+  color: var(--color-pencil);
+}
+
+.prose blockquote {
+  border-left: 2px solid var(--color-rule-strong);
+  padding-left: 1em;
+  color: var(--color-graphite);
+  font-style: italic;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--color-sunken);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  /* Long identifiers must not push the column sideways on a narrow screen. */
+  overflow-wrap: break-word;
+}
+
+.prose pre {
+  background: var(--color-sunken);
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-size: var(--text-small);
+  line-height: 1.6;
+}
+
+.prose pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: inherit;
+  overflow-wrap: normal;
+}
+
+.prose hr {
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+  margin: 1.6em 0;
+}
+
+/* Markdown tables. Wide ones scroll inside their own wrapper rather than
+   pushing the page sideways. */
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+
+.prose thead th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-pencil);
+  border-bottom: 1px solid var(--color-rule-strong);
+  padding: 0.5rem 0.75rem 0.5rem 0;
+}
+
+.prose tbody td {
+  border-bottom: 1px solid var(--color-rule);
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  vertical-align: top;
+}
+
+.prose .table-scroll {
+  overflow-x: auto;
+}
+
+/* Task lists from remark-gfm */
+.prose li input[type='checkbox'] {
+  margin-right: 0.4em;
+  accent-color: var(--color-accent);
+}
+
+.prose ul:has(> li > input[type='checkbox']) {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* ── Maths ─────────────────────────────────────────────────────────────── */
+
+/* KaTeX defaults run large next to a 15–16px body; bring it back into line and
+   let long display equations scroll instead of overflowing the column. */
+.katex {
+  font-size: 1.05em;
+}
+
+.katex-display {
+  margin: 1em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.25em 0;
+}
+
+.katex-display > .katex {
+  font-size: 1.15em;
+}
+
+/* On a narrow screen a centred equation that overflows scrolls away from its own
+   start, so display maths aligns left where space is tight. */
+@media (max-width: 480px) {
+  .katex-display > .katex {
+    text-align: left;
+    font-size: 1.05em;
+  }
+}
+
+/* A LaTeX string that failed to parse — surfaced quietly rather than as a wall
+   of red, since the surrounding answer is usually still useful. */
+.katex-error {
+  color: var(--color-wrong);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-wrong-soft);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+/* ── Syntax highlighting (lowlight / hljs class names) ─────────────────── */
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--color-pencil);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal {
+  color: var(--color-accent);
+}
+
+.hljs-string,
+.hljs-attr {
+  color: var(--color-correct);
+}
+
+.hljs-number,
+.hljs-built_in,
+.hljs-title,
+.hljs-type {
+  color: var(--color-wrong);
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* A panel anchored to the left edge should arrive from the left; a vertical rise
+   reads as unrelated to where it came from. */
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation: rise 200ms cubic-bezier(0.22, 0.68, 0.35, 1) both;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 180ms cubic-bezier(0.22, 0.68, 0.35, 1) both;
+}
+
+/* The streaming cursor: a solid block that keeps pace with the text. */
+.caret::after {
+  content: '';
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 0.1em;
+  vertical-align: -0.15em;
+  background: var(--color-accent);
+  animation: pulse-soft 1.1s ease-in-out infinite;
+}
+
+.thinking span {
+  animation: pulse-soft 1.2s ease-in-out infinite;
+}
+
+.thinking span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.thinking span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .caret::after {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+/* A textarea that grows with its content, capped by max-height. Doing this in CSS
+   avoids the scrollHeight measure-and-set dance, which is racy: a reflow landing
+   between the write and the read yields a height for the wrong layout. */
+.autogrow {
+  field-sizing: content;
+}
+
+/* Keep scrollbars from shouting on the sunken surfaces. */
+.subtle-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-rule-strong) transparent;
 }
